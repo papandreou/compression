@@ -1,7 +1,7 @@
 {
   "name": "compression-papandreou",
   "description": "Node.js compression middleware",
-  "version": "1.6.1",
+  "version": "1.6.1-patch1",
   "license": "MIT",
   "repository": "papandreou/compression",
   "dependencies": {
