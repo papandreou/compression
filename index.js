@@ -63,6 +63,8 @@ function compression(options) {
     var on = res.on
     var end = res.end
     var stream
+    var drainQueued = false
+    var temporaryDrainListener
 
     // flush
     res.flush = function flush() {
@@ -115,7 +117,14 @@ function compression(options) {
     };
 
     res.on = function(type, listener){
-      if (!listeners || type !== 'drain') {
+      if (type === 'drain' && listeners) {
+        if (!temporaryDrainListener) {
+          temporaryDrainListener = function () {
+            drainQueued = true;
+          };
+          on.call(this, 'drain', temporaryDrainListener);
+        }
+      } else if (!listeners || type !== 'drain') {
         return on.call(this, type, listener)
       }
 
@@ -132,6 +141,13 @@ function compression(options) {
     function nocompress(msg) {
       debug('no compression: %s', msg)
       addListeners(res, on, listeners)
+      if (temporaryDrainListener) {
+        res.removeListener('drain', temporaryDrainListener);
+      }
+      if (drainQueued) {
+        res.emit('drain');
+        drainQueued = false;
+      }
       listeners = null
     }
 
@@ -194,6 +210,13 @@ function compression(options) {
 
       // add buffered listeners to stream
       addListeners(stream, stream.on, listeners)
+      if (temporaryDrainListener) {
+        res.removeListener('drain', temporaryDrainListener);
+      }
+      if (drainQueued) {
+        res.emit('drain');
+        drainQueued = false;
+      }
 
       // header fields
       res.setHeader('Content-Encoding', method);
